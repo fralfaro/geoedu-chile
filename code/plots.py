@@ -76,27 +76,13 @@ index_order_02 = [
 def preparar_dataset_tipo_universidad(df, tipos_universidad, orden_regiones):
     """
     Prepara un DataFrame con los porcentajes de tipos de universidad por región.
-
-    Parámetros:
-    -----------
-    df : pd.DataFrame
-        DataFrame con las columnas 'cod_inst', 'region_sede' y 'tipo_inst_3'.
-    tipos_universidad : list
-        Lista con los tipos de universidad a considerar.
-    orden_regiones : list
-        Lista con las regiones ordenadas de norte a sur.
-
-    Retorna:
-    --------
-    df_porcentaje : pd.DataFrame
-        DataFrame con porcentajes por tipo de universidad y región.
     """
     df_filtered = df[df['tipo_inst_3'].isin(tipos_universidad)].copy()
     df_filtered_unique = df_filtered.drop_duplicates(subset=['cod_inst', 'region_sede', 'tipo_inst_3'])
 
-    df_filtered_unique['region_sede'] = pd.Categorical(
-        df_filtered_unique['region_sede'], 
-        categories=orden_regiones, 
+    df_filtered_unique.loc[:, 'region_sede'] = pd.Categorical(
+        df_filtered_unique['region_sede'],
+        categories=orden_regiones,
         ordered=True
     )
 
@@ -104,7 +90,7 @@ def preparar_dataset_tipo_universidad(df, tipos_universidad, orden_regiones):
     df_porcentaje = df_grouped.div(df_grouped.sum(axis=1), axis=0) * 100
     df_porcentaje = df_porcentaje.reindex(orden_regiones)
 
-    return df_porcentaje
+    return df_porcentaje.reset_index()
 
 def preparar_dataset_tipodepen(df, regiones_dict, tipodepen_dict, index_order):
     """
@@ -138,7 +124,7 @@ def preparar_dataset_tipodepen(df, regiones_dict, tipodepen_dict, index_order):
     # Reordenar de norte a sur (invertido para horizontal)
     df_porcentaje = df_porcentaje.reindex(index_order[::-1])
 
-    return df_porcentaje
+    return df_porcentaje.reset_index()
 
 def preparar_dataset_ivm(df, regiones_dict, index_order, valor_corte = 20.03805):
     """
@@ -274,7 +260,7 @@ def calcular_distancias(df):
         axis=1
     )
     df_filtrado = df.dropna(subset=['DISTANCIA'])
-    print(f"Cantidad de observaciones: {df_filtrado.shape[0]}")
+    #print(f"Cantidad de observaciones: {df_filtrado.shape[0]}")
     return df_filtrado
 
 
@@ -313,18 +299,13 @@ def calcular_distancias_promedio(df_distancias, df_tasas):
 # Gráficos para visualización
 def plotly_tipo_universidad_por_region(df_porcentaje):
     """
-    Genera un gráfico de barras horizontales apiladas con Plotly para tipos de universidad por región.
-
-    Parámetros:
-    -----------
-    df_porcentaje : pd.DataFrame
-        DataFrame con porcentajes por tipo de universidad y región (output de preparar_dataset_tipo_universidad).
+    Gráfico de barras horizontales apiladas: tipos de universidad por región.
     """
     fig = go.Figure()
 
-    for tipo in df_porcentaje.columns:
+    for tipo in df_porcentaje.columns[1:]:
         fig.add_trace(go.Bar(
-            y=df_porcentaje.index,
+            y=df_porcentaje['region_sede'],
             x=df_porcentaje[tipo],
             name=tipo,
             orientation='h',
@@ -341,24 +322,18 @@ def plotly_tipo_universidad_por_region(df_porcentaje):
         legend_title='Tipo de Universidad'
     )
     fig.update_yaxes(autorange='reversed')
-
     fig.update_traces(insidetextanchor='middle', textfont_size=11)
-    fig.show()
+    return fig
 
 def plotly_tipodepen_por_region(df_porcentaje):
     """
-    Genera un gráfico de barras apiladas horizontales de TIPO_DEPEN por región con Plotly.
-
-    Parámetros:
-    -----------
-    df_porcentaje : pd.DataFrame
-        DataFrame procesado con porcentajes por tipo de dependencia y región.
+    Gráfico de barras horizontales apiladas: tipo de dependencia por región.
     """
     fig = go.Figure()
 
-    for tipo in df_porcentaje.columns:
+    for tipo in df_porcentaje.columns[1:]:
         fig.add_trace(go.Bar(
-            y=df_porcentaje.index,
+            y=df_porcentaje[df_porcentaje.columns[0]],
             x=df_porcentaje[tipo],
             name=tipo,
             orientation='h',
@@ -372,11 +347,12 @@ def plotly_tipodepen_por_region(df_porcentaje):
         xaxis_title='Porcentaje (%)',
         yaxis_title='Región',
         height=700,
-        legend_title='Tipo de Dependencia',
+        legend_title='Tipo de Dependencia'
     )
-
+    fig.update_yaxes(autorange='reversed')
     fig.update_traces(insidetextanchor='middle', textfont_size=10)
-    fig.show()
+    return fig
+
 
 def plotly_ivm_por_region(df_ivm, valor_corte = 20.03805):
     """
@@ -407,7 +383,7 @@ def plotly_ivm_por_region(df_ivm, valor_corte = 20.03805):
         margin=dict(l=80, r=40, t=60, b=40)
     )
 
-    fig.show()
+    return fig
 
 def plotly_matriz_movilidad(matriz):
     """
@@ -435,7 +411,7 @@ def plotly_matriz_movilidad(matriz):
     )
     fig.update_xaxes(tickangle=45)
     fig.update_yaxes(autorange="reversed")
-    fig.show()
+    return fig
 
 def plotly_tasas_migracion_recepcion(df_tasas):
     """
@@ -479,7 +455,7 @@ def plotly_tasas_migracion_recepcion(df_tasas):
     )
 
     fig.update_yaxes(autorange="reversed")
-    fig.show()
+    return fig
 
 def plotly_migracion_vs_distancia(df):
     """
@@ -504,7 +480,7 @@ def plotly_migracion_vs_distancia(df):
     fig.update_layout(
         margin=dict(l=60, r=40, t=60, b=40)
     )
-    fig.show()
+    return fig
 
 
 def plotly_tasa_vs_distancia(df, col_x, col_y, titulo, color='blue'):
@@ -543,5 +519,5 @@ def plotly_tasa_vs_distancia(df, col_x, col_y, titulo, color='blue'):
     fig.update_layout(
         margin=dict(l=60, r=40, t=60, b=40)
     )
-    fig.show()
-
+    return fig
+    
